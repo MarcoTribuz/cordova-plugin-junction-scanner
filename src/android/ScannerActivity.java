@@ -12,9 +12,9 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
+import androidx.activity.ComponentActivity;
 import androidx.annotation.NonNull;
 import androidx.annotation.OptIn;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ExperimentalGetImage;
 import androidx.camera.core.ImageAnalysis;
@@ -42,7 +42,7 @@ import java.util.concurrent.Executors;
  * Returns the first detected barcode via setResult(RESULT_OK, { text, format }).
  * Close button / back press → RESULT_CANCELED.
  */
-public class ScannerActivity extends AppCompatActivity {
+public class ScannerActivity extends ComponentActivity {
 
     public static final String EXTRA_FORMATS = "formats";
     public static final String EXTRA_TORCH   = "torch";

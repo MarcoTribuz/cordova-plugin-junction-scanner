@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<plugin id="cordova-plugin-junction-scanner" version="1.0.0"
+<plugin id="cordova-plugin-junction-scanner" version="1.0.1"
         xmlns="http://apache.org/cordova/ns/plugins/1.0"
         xmlns:android="http://schemas.android.com/apk/res/android">
   <name>JunctionScanner</name>
@@ -45,6 +45,7 @@
 
     <!-- ML Kit barcode + CameraX (gradle refs, same mechanism as docscanner) -->
     <framework src="com.google.mlkit:barcode-scanning:17.3.0"/>
+    <framework src="androidx.activity:activity:1.8.2"/>
     <framework src="androidx.camera:camera-core:1.3.4"/>
     <framework src="androidx.camera:camera-camera2:1.3.4"/>
     <framework src="androidx.camera:camera-lifecycle:1.3.4"/>
