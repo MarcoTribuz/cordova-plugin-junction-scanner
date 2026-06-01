@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin id="cordova-plugin-junction-scanner" version="1.0.0"
+        xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        xmlns:android="http://schemas.android.com/apk/res/android">
+  <name>JunctionScanner</name>
+  <description>Custom branded QR/barcode scanner: AVFoundation on iOS 13+, CameraX + ML Kit on Android. Native scan overlay (reticle + animated scan-line). Returns { text, format, cancelled }.</description>
+  <license>MIT</license>
+
+  <engines>
+    <engine name="cordova" version=">=10.0.0"/>
+    <engine name="cordova-ios" version=">=6.0.0"/>
+    <engine name="cordova-android" version=">=10.0.0"/>
+  </engines>
+
+  <js-module src="www/scanner.js" name="JunctionScanner">
+    <clobbers target="cordova.plugins.junctionScanner"/>
+  </js-module>
+
+  <!-- ─── Android ─────────────────────────────────────────────────────── -->
+  <platform name="android">
+    <config-file target="res/xml/config.xml" parent="/*">
+      <feature name="JunctionScanner">
+        <param name="android-package" value="com.marcotribuzio.junction.scanner.JunctionScanner"/>
+      </feature>
+    </config-file>
+
+    <config-file target="AndroidManifest.xml" parent="/manifest">
+      <uses-permission android:name="android.permission.CAMERA"/>
+      <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    </config-file>
+
+    <config-file target="AndroidManifest.xml" parent="/manifest/application">
+      <activity android:name="com.marcotribuzio.junction.scanner.ScannerActivity"
+                android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+                android:screenOrientation="portrait"
+                android:exported="false"/>
+    </config-file>
+
+    <source-file src="src/android/JunctionScanner.java"
+                 target-dir="src/com/marcotribuzio/junction/scanner"/>
+    <source-file src="src/android/ScannerActivity.java"
+                 target-dir="src/com/marcotribuzio/junction/scanner"/>
+    <source-file src="src/android/ScannerOverlayView.java"
+                 target-dir="src/com/marcotribuzio/junction/scanner"/>
+
+    <!-- ML Kit barcode + CameraX (gradle refs, same mechanism as docscanner) -->
+    <framework src="com.google.mlkit:barcode-scanning:17.3.0"/>
+    <framework src="androidx.camera:camera-core:1.3.4"/>
+    <framework src="androidx.camera:camera-camera2:1.3.4"/>
+    <framework src="androidx.camera:camera-lifecycle:1.3.4"/>
+    <framework src="androidx.camera:camera-view:1.3.4"/>
+  </platform>
+
+  <!-- ─── iOS ─────────────────────────────────────────────────────────── -->
+  <platform name="ios">
+    <config-file target="config.xml" parent="/*">
+      <feature name="JunctionScanner">
+        <param name="ios-package" value="JunctionScanner"/>
+        <param name="onload" value="false"/>
+      </feature>
+    </config-file>
+
+    <source-file src="src/ios/JunctionScanner.swift"/>
+
+    <!-- AVFoundation: barcode metadata capture. NSCameraUsageDescription lives in mobile-config.js -->
+    <framework src="AVFoundation.framework"/>
+  </platform>
+</plugin>

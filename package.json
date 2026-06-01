@@ -1,0 +1,16 @@
+{
+  "name": "cordova-plugin-junction-scanner",
+  "version": "1.0.0",
+  "description": "Custom branded QR/barcode scanner (AVFoundation iOS / CameraX + ML Kit Android) with a native scan overlay.",
+  "cordova": {
+    "id": "cordova-plugin-junction-scanner",
+    "platforms": ["android", "ios"]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MarcoTribuz/cordova-plugin-junction-scanner.git"
+  },
+  "keywords": ["ecosystem:cordova", "cordova-android", "cordova-ios", "scanner", "barcode", "qrcode", "ml-kit", "camerax", "avfoundation"],
+  "author": "Marco Tribuzio",
+  "license": "MIT"
+}
