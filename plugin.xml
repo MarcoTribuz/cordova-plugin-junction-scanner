@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<plugin id="cordova-plugin-junction-scanner" version="1.0.1"
+<plugin id="cordova-plugin-junction-scanner" version="1.0.2"
         xmlns="http://apache.org/cordova/ns/plugins/1.0"
         xmlns:android="http://schemas.android.com/apk/res/android">
   <name>JunctionScanner</name>
-  <description>Custom branded QR/barcode scanner: AVFoundation on iOS 13+, CameraX + ML Kit on Android. Native scan overlay (reticle + animated scan-line). Returns { text, format, cancelled }.</description>
+  <description>Custom branded QR/barcode scanner: AVFoundation on iOS 13+, CameraX + ML Kit on Android. Junction-branded overlay (navy dim, neon glow brackets, corner dots, gradient scan-line). Returns { text, format, cancelled }.</description>
   <license>MIT</license>
 
   <engines>

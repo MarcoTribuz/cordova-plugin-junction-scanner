@@ -12,23 +12,26 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.view.View;
-import android.view.animation.LinearInterpolator;
+import android.view.animation.AccelerateDecelerateInterpolator;
 
 /**
- * Branded scan overlay: a dimmed full-screen mask with a clear rounded reticle
- * in the center, corner brackets, and an animated scan-line sweeping vertically.
+ * Junction branded scan overlay.
  *
+ * Navy-tinted dim mask, clear rounded reticle, neon-glow corner brackets,
+ * accent corner dots, and an animated gradient scan-line with glow.
  * Drawn entirely in code (no resources) so the plugin stays self-contained.
  */
 public class ScannerOverlayView extends View {
 
-    // Junction brand accent (teal/green). Adjust to match the app palette.
-    private static final int ACCENT = Color.parseColor("#22D3A6");
+    private static final int ACCENT   = Color.parseColor("#22D3A6");
+    private static final int NAVY_DIM = Color.parseColor("#C70A0F1E"); // ~78% navy
 
-    private final Paint maskPaint    = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint clearPaint   = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint cornerPaint  = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint linePaint    = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint maskPaint   = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint clearPaint  = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint glowPaint   = new Paint(Paint.ANTI_ALIAS_FLAG);  // neon glow pass
+    private final Paint cornerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);  // crisp brackets
+    private final Paint dotPaint    = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint linePaint   = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private final RectF reticle = new RectF();
     private float cornerRadius;
@@ -37,19 +40,30 @@ public class ScannerOverlayView extends View {
 
     public ScannerOverlayView(Context context) {
         super(context);
+        // Hardware layer required for PorterDuff CLEAR (reticle punch-out).
         setLayerType(LAYER_TYPE_HARDWARE, null);
 
-        maskPaint.setColor(Color.parseColor("#99000000")); // 60% black dim
+        maskPaint.setColor(NAVY_DIM);
 
         clearPaint.setColor(Color.TRANSPARENT);
         clearPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
 
+        // Glow pass — wide soft stroke, same color but low alpha. setShadowLayer only
+        // works with LAYER_TYPE_SOFTWARE; we simulate glow by drawing a thicker stroke
+        // at reduced alpha before the crisp stroke.
+        glowPaint.setColor(Color.parseColor("#5522D3A6")); // accent ~33% alpha
+        glowPaint.setStyle(Paint.Style.STROKE);
+        glowPaint.setStrokeWidth(dp(14));
+        glowPaint.setStrokeCap(Paint.Cap.ROUND);
+        glowPaint.setMaskFilter(null);
+
         cornerPaint.setColor(ACCENT);
         cornerPaint.setStyle(Paint.Style.STROKE);
-        cornerPaint.setStrokeWidth(dp(4));
+        cornerPaint.setStrokeWidth(dp(3.5f));
         cornerPaint.setStrokeCap(Paint.Cap.ROUND);
 
-        linePaint.setStyle(Paint.Style.FILL);
+        dotPaint.setColor(ACCENT);
+        dotPaint.setStyle(Paint.Style.FILL);
 
         cornerRadius = dp(20);
     }
@@ -57,7 +71,6 @@ public class ScannerOverlayView extends View {
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        // Square reticle ~70% of the narrower dimension, vertically centered (slightly high).
         float side = Math.min(w, h) * 0.70f;
         float cx = w / 2f;
         float cy = h * 0.45f;
@@ -71,7 +84,7 @@ public class ScannerOverlayView extends View {
         scanAnimator.setDuration(1800);
         scanAnimator.setRepeatMode(ValueAnimator.REVERSE);
         scanAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        scanAnimator.setInterpolator(new LinearInterpolator());
+        scanAnimator.setInterpolator(new AccelerateDecelerateInterpolator());
         scanAnimator.addUpdateListener(a -> {
             scanY = (float) a.getAnimatedValue();
             invalidate();
@@ -83,30 +96,65 @@ public class ScannerOverlayView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        // Dim everything, then punch the reticle hole.
+        // Navy dim + reticle punch-out.
         canvas.drawRect(0, 0, getWidth(), getHeight(), maskPaint);
         canvas.drawRoundRect(reticle, cornerRadius, cornerRadius, clearPaint);
 
-        // Corner brackets.
-        drawCorners(canvas);
+        // Subtle inner glow ring.
+        Paint ringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        RectF innerRing = new RectF(reticle.left + dp(1), reticle.top + dp(1),
+                                    reticle.right - dp(1), reticle.bottom - dp(1));
+        ringPaint.setStyle(Paint.Style.STROKE);
+        ringPaint.setStrokeWidth(dp(2));
+        ringPaint.setColor(Color.parseColor("#2622D3A6")); // accent ~15%
+        canvas.drawRoundRect(innerRing, cornerRadius - dp(1), cornerRadius - dp(1), ringPaint);
 
-        // Scan-line: a soft accent gradient band.
-        float bandH = dp(3);
-        LinearGradient grad = new LinearGradient(
-                reticle.left, scanY - bandH, reticle.left, scanY + bandH,
-                new int[]{0x0022D3A6, ACCENT, 0x0022D3A6},
+        // Corner glow pass (drawn before crisp brackets).
+        Path corners = buildCornersPath();
+        canvas.drawPath(corners, glowPaint);
+
+        // Crisp corner brackets.
+        canvas.drawPath(corners, cornerPaint);
+
+        // Corner dots.
+        float dotR = dp(5);
+        canvas.drawCircle(reticle.left,  reticle.top,    dotR, dotPaint);
+        canvas.drawCircle(reticle.right, reticle.top,    dotR, dotPaint);
+        canvas.drawCircle(reticle.right, reticle.bottom, dotR, dotPaint);
+        canvas.drawCircle(reticle.left,  reticle.bottom, dotR, dotPaint);
+
+        // Scan-line: wide diffuse glow band + sharp center line.
+        drawScanLine(canvas);
+    }
+
+    private void drawScanLine(Canvas canvas) {
+        float bandHalf = dp(12);
+        // Glow band — wide gradient.
+        LinearGradient glow = new LinearGradient(
+                reticle.left, scanY - bandHalf, reticle.left, scanY + bandHalf,
+                new int[]{0x0022D3A6, 0x4422D3A6, ACCENT, 0x4422D3A6, 0x0022D3A6},
                 null, Shader.TileMode.CLAMP);
-        linePaint.setShader(grad);
-        canvas.drawRect(reticle.left + dp(6), scanY - bandH,
-                reticle.right - dp(6), scanY + bandH, linePaint);
+        linePaint.setShader(glow);
+        canvas.drawRect(reticle.left + dp(6), scanY - bandHalf,
+                reticle.right - dp(6), scanY + bandHalf, linePaint);
+
+        // Sharp center line.
+        float lineHalf = dp(2);
+        LinearGradient sharp = new LinearGradient(
+                reticle.left, scanY - lineHalf, reticle.left, scanY + lineHalf,
+                new int[]{0x0022D3A6, ACCENT, ACCENT, 0x0022D3A6},
+                null, Shader.TileMode.CLAMP);
+        linePaint.setShader(sharp);
+        canvas.drawRect(reticle.left + dp(8), scanY - lineHalf,
+                reticle.right - dp(8), scanY + lineHalf, linePaint);
+
         linePaint.setShader(null);
     }
 
-    private void drawCorners(Canvas canvas) {
+    private Path buildCornersPath() {
         float len = dp(28);
         float r = cornerRadius;
         Path p = new Path();
-
         // Top-left
         p.moveTo(reticle.left, reticle.top + len);
         p.lineTo(reticle.left, reticle.top + r);
@@ -127,8 +175,7 @@ public class ScannerOverlayView extends View {
         p.lineTo(reticle.left + r, reticle.bottom);
         p.quadTo(reticle.left, reticle.bottom, reticle.left, reticle.bottom - r);
         p.lineTo(reticle.left, reticle.bottom - len);
-
-        canvas.drawPath(p, cornerPaint);
+        return p;
     }
 
     @Override
@@ -137,7 +184,11 @@ public class ScannerOverlayView extends View {
         if (scanAnimator != null) scanAnimator.cancel();
     }
 
-    private float dp(int v) {
+    private float dp(float v) {
         return v * getResources().getDisplayMetrics().density;
+    }
+
+    private float dp(int v) {
+        return dp((float) v);
     }
 }

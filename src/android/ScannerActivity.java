@@ -3,12 +3,13 @@ package com.marcotribuzio.junction.scanner;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
@@ -37,7 +38,7 @@ import java.util.concurrent.Executors;
 
 /**
  * Full-screen branded scanner: CameraX live preview + ML Kit barcode analyzer +
- * {@link ScannerOverlayView} (dimmed mask, reticle, animated scan-line).
+ * {@link ScannerOverlayView} (navy dim, neon reticle, animated scan-line).
  *
  * Returns the first detected barcode via setResult(RESULT_OK, { text, format }).
  * Close button / back press → RESULT_CANCELED.
@@ -51,11 +52,17 @@ public class ScannerActivity extends ComponentActivity {
     public static final String RESULT_TEXT   = "text";
     public static final String RESULT_FORMAT = "format";
 
+    private static final int NAVY    = Color.parseColor("#0A0F1E");
+    private static final int ACCENT  = Color.parseColor("#22D3A6");
+    private static final int GLASS   = Color.parseColor("#1AFFFFFF"); // white ~10%
+    private static final int GLASS_B = Color.parseColor("#2EFFFFFF"); // white ~18%
+
     private ExecutorService analysisExecutor;
     private BarcodeScanner barcodeScanner;
     private androidx.camera.core.Camera camera;
     private boolean delivered = false;
-    private boolean torchOn = false;
+    private boolean torchOn   = false;
+    private TextView torchBtn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,13 +72,14 @@ public class ScannerActivity extends ComponentActivity {
         torchOn           = getIntent().getBooleanExtra(EXTRA_TORCH, false);
         final boolean front = getIntent().getBooleanExtra(EXTRA_FRONT, false);
         String prompt       = getIntent().getStringExtra(EXTRA_PROMPT);
+        if (prompt == null || prompt.isEmpty()) prompt = "Inquadra il codice QR";
 
         analysisExecutor = Executors.newSingleThreadExecutor();
         barcodeScanner   = BarcodeScanning.getClient(buildOptions(formatsCsv));
 
-        // ── View tree (built programmatically; no plugin res files) ──────
+        // ── View tree ────────────────────────────────────────────────────────
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.BLACK);
+        root.setBackgroundColor(NAVY);
 
         final PreviewView previewView = new PreviewView(this);
         previewView.setLayoutParams(new FrameLayout.LayoutParams(
@@ -83,52 +91,86 @@ public class ScannerActivity extends ComponentActivity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         root.addView(overlay);
 
-        // Prompt under the reticle.
-        if (prompt != null && !prompt.isEmpty()) {
-            TextView hint = new TextView(this);
-            hint.setText(prompt);
-            hint.setTextColor(Color.WHITE);
-            hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-            hint.setGravity(Gravity.CENTER);
-            FrameLayout.LayoutParams hp = new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            hp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-            hp.bottomMargin = dp(120);
-            hint.setLayoutParams(hp);
-            root.addView(hint);
-        }
+        // Wordmark — top center
+        TextView wordmark = new TextView(this);
+        wordmark.setText("JUNCTION®");
+        wordmark.setTextColor(Color.parseColor("#8CFFFFFF")); // white ~55%
+        wordmark.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        wordmark.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        wordmark.setLetterSpacing(0.18f);
+        wordmark.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams wp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        wp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+        wp.topMargin = dp(52);
+        wordmark.setLayoutParams(wp);
+        root.addView(wordmark);
 
-        // Close button.
-        Button close = new Button(this);
-        close.setText("✕"); // ✕
-        close.setTextColor(Color.WHITE);
-        close.setBackgroundColor(Color.TRANSPARENT);
-        close.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
-        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(dp(56), dp(56));
+        // Close button — glass pill
+        TextView close = makeGlassBtn("✕");
+        close.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(dp(48), dp(48));
         cp.gravity = Gravity.TOP | Gravity.START;
-        cp.topMargin = dp(24);
-        cp.leftMargin = dp(8);
+        cp.topMargin = dp(36);
+        cp.leftMargin = dp(16);
         close.setLayoutParams(cp);
         close.setOnClickListener(v -> cancelAndFinish());
         root.addView(close);
 
-        // Torch toggle.
-        final Button torch = new Button(this);
-        torch.setText("⚡"); // ⚡
-        torch.setTextColor(Color.WHITE);
-        torch.setBackgroundColor(Color.TRANSPARENT);
-        torch.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
-        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(dp(56), dp(56));
+        // Torch button — glass pill
+        torchBtn = makeGlassBtn("⚡");
+        torchBtn.setTextColor(torchOn ? ACCENT : Color.WHITE);
+        torchBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(dp(48), dp(48));
         tp.gravity = Gravity.TOP | Gravity.END;
-        tp.topMargin = dp(24);
-        tp.rightMargin = dp(8);
-        torch.setLayoutParams(tp);
-        torch.setOnClickListener(v -> toggleTorch());
-        root.addView(torch);
+        tp.topMargin = dp(36);
+        tp.rightMargin = dp(16);
+        torchBtn.setLayoutParams(tp);
+        torchBtn.setOnClickListener(v -> toggleTorch());
+        root.addView(torchBtn);
+
+        // Hint pill — bottom
+        FrameLayout hintPill = new FrameLayout(this);
+        GradientDrawable hintBg = new GradientDrawable();
+        hintBg.setColor(Color.parseColor("#33FFFFFF")); // white ~20%
+        hintBg.setCornerRadius(dp(20));
+        hintBg.setStroke(1, GLASS_B);
+        hintPill.setBackground(hintBg);
+        hintPill.setPadding(dp(20), dp(10), dp(20), dp(10));
+
+        TextView hintLabel = new TextView(this);
+        hintLabel.setText(prompt);
+        hintLabel.setTextColor(Color.parseColor("#BFFFFFFF")); // white ~75%
+        hintLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        hintLabel.setGravity(Gravity.CENTER);
+        hintLabel.setLayoutParams(new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        hintPill.addView(hintLabel);
+
+        FrameLayout.LayoutParams hp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        hp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+        hp.bottomMargin = dp(80);
+        hintPill.setLayoutParams(hp);
+        root.addView(hintPill);
 
         setContentView(root);
-
         startCamera(previewView, front);
+    }
+
+    /** Creates a square glass-pill button (rounded, semi-transparent background). */
+    private TextView makeGlassBtn(String label) {
+        TextView btn = new TextView(this);
+        btn.setText(label);
+        btn.setTextColor(Color.WHITE);
+        btn.setGravity(Gravity.CENTER);
+
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(GLASS);
+        bg.setCornerRadius(dp(24));
+        bg.setStroke(1, GLASS_B);
+        btn.setBackground(bg);
+        return btn;
     }
 
     private BarcodeScannerOptions buildOptions(String csv) {
@@ -140,7 +182,6 @@ public class ScannerActivity extends ComponentActivity {
                 return new BarcodeScannerOptions.Builder().setBarcodeFormats(acc).build();
             }
         }
-        // Fallback: all formats.
         return new BarcodeScannerOptions.Builder()
                 .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS).build();
     }
@@ -254,6 +295,7 @@ public class ScannerActivity extends ComponentActivity {
         if (camera == null || !camera.getCameraInfo().hasFlashUnit()) return;
         torchOn = !torchOn;
         camera.getCameraControl().enableTorch(torchOn);
+        torchBtn.setTextColor(torchOn ? ACCENT : Color.WHITE);
     }
 
     private void cancelAndFinish() {
