@@ -1,6 +1,6 @@
 {
   "name": "cordova-plugin-junction-scanner",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "description": "Custom branded QR/barcode scanner (AVFoundation iOS / CameraX + ML Kit Android) with a native scan overlay.",
   "cordova": {
     "id": "cordova-plugin-junction-scanner",
