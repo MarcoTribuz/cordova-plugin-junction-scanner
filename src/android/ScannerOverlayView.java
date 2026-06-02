@@ -23,15 +23,15 @@ import android.view.animation.AccelerateDecelerateInterpolator;
  */
 public class ScannerOverlayView extends View {
 
-    private static final int ACCENT   = Color.parseColor("#22D3A6");
+    private static final int ACCENT   = Color.parseColor("#3B68B2");
     private static final int NAVY_DIM = Color.parseColor("#C70A0F1E"); // ~78% navy
 
     private final Paint maskPaint   = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint clearPaint  = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint glowPaint   = new Paint(Paint.ANTI_ALIAS_FLAG);  // neon glow pass
     private final Paint cornerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);  // crisp brackets
-    private final Paint dotPaint    = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint linePaint   = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private boolean showScanLine = false;
 
     private final RectF reticle = new RectF();
     private float cornerRadius;
@@ -62,11 +62,10 @@ public class ScannerOverlayView extends View {
         cornerPaint.setStrokeWidth(dp(3.5f));
         cornerPaint.setStrokeCap(Paint.Cap.ROUND);
 
-        dotPaint.setColor(ACCENT);
-        dotPaint.setStyle(Paint.Style.FILL);
-
         cornerRadius = dp(20);
     }
+
+    public void setShowScanLine(boolean v) { showScanLine = v; }
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
@@ -75,7 +74,7 @@ public class ScannerOverlayView extends View {
         float cx = w / 2f;
         float cy = h * 0.45f;
         reticle.set(cx - side / 2f, cy - side / 2f, cx + side / 2f, cy + side / 2f);
-        startScanAnimation();
+        if (showScanLine) startScanAnimation();
     }
 
     private void startScanAnimation() {
@@ -116,15 +115,7 @@ public class ScannerOverlayView extends View {
         // Crisp corner brackets.
         canvas.drawPath(corners, cornerPaint);
 
-        // Corner dots.
-        float dotR = dp(5);
-        canvas.drawCircle(reticle.left,  reticle.top,    dotR, dotPaint);
-        canvas.drawCircle(reticle.right, reticle.top,    dotR, dotPaint);
-        canvas.drawCircle(reticle.right, reticle.bottom, dotR, dotPaint);
-        canvas.drawCircle(reticle.left,  reticle.bottom, dotR, dotPaint);
-
-        // Scan-line: wide diffuse glow band + sharp center line.
-        drawScanLine(canvas);
+        if (showScanLine) drawScanLine(canvas);
     }
 
     private void drawScanLine(Canvas canvas) {

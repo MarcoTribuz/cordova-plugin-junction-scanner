@@ -45,12 +45,13 @@ import java.util.concurrent.Executors;
  */
 public class ScannerActivity extends ComponentActivity {
 
-    public static final String EXTRA_FORMATS = "formats";
-    public static final String EXTRA_TORCH   = "torch";
-    public static final String EXTRA_FRONT   = "front";
-    public static final String EXTRA_PROMPT  = "prompt";
-    public static final String RESULT_TEXT   = "text";
-    public static final String RESULT_FORMAT = "format";
+    public static final String EXTRA_FORMATS   = "formats";
+    public static final String EXTRA_TORCH     = "torch";
+    public static final String EXTRA_FRONT     = "front";
+    public static final String EXTRA_PROMPT    = "prompt";
+    public static final String EXTRA_SCAN_LINE = "showScanLine";
+    public static final String RESULT_TEXT     = "text";
+    public static final String RESULT_FORMAT   = "format";
 
     private static final int NAVY    = Color.parseColor("#0A0F1E");
     private static final int ACCENT  = Color.parseColor("#22D3A6");
@@ -68,10 +69,11 @@ public class ScannerActivity extends ComponentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        String formatsCsv = getIntent().getStringExtra(EXTRA_FORMATS);
-        torchOn           = getIntent().getBooleanExtra(EXTRA_TORCH, false);
-        final boolean front = getIntent().getBooleanExtra(EXTRA_FRONT, false);
-        String prompt       = getIntent().getStringExtra(EXTRA_PROMPT);
+        String formatsCsv       = getIntent().getStringExtra(EXTRA_FORMATS);
+        torchOn                 = getIntent().getBooleanExtra(EXTRA_TORCH, false);
+        final boolean front     = getIntent().getBooleanExtra(EXTRA_FRONT, false);
+        final boolean scanLine  = getIntent().getBooleanExtra(EXTRA_SCAN_LINE, false);
+        String prompt           = getIntent().getStringExtra(EXTRA_PROMPT);
         if (prompt == null || prompt.isEmpty()) prompt = "Inquadra il codice QR";
 
         analysisExecutor = Executors.newSingleThreadExecutor();
@@ -89,6 +91,7 @@ public class ScannerActivity extends ComponentActivity {
         ScannerOverlayView overlay = new ScannerOverlayView(this);
         overlay.setLayoutParams(new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        overlay.setShowScanLine(scanLine);
         root.addView(overlay);
 
         // Wordmark — top center

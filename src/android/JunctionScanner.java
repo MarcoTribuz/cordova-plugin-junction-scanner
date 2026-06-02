@@ -31,6 +31,7 @@ public class JunctionScanner extends CordovaPlugin {
     private boolean torchOn = false;
     private boolean frontCamera = false;
     private String  prompt = "";
+    private boolean showScanLine = false;
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
@@ -41,10 +42,11 @@ public class JunctionScanner extends CordovaPlugin {
             return true;
         }
         if ("scan".equals(action)) {
-            this.formats     = args.optString(0, "QR_CODE,DATA_MATRIX");
-            this.torchOn     = args.optBoolean(1, false);
-            this.frontCamera = args.optBoolean(2, false);
-            this.prompt      = args.optString(3, "");
+            this.formats      = args.optString(0, "QR_CODE,DATA_MATRIX");
+            this.torchOn      = args.optBoolean(1, false);
+            this.frontCamera  = args.optBoolean(2, false);
+            this.prompt       = args.optString(3, "");
+            this.showScanLine = args.optBoolean(4, false);
             this.pendingCallback = callbackContext;
 
             if (!cordova.hasPermission(Manifest.permission.CAMERA)) {
@@ -74,6 +76,7 @@ public class JunctionScanner extends CordovaPlugin {
         intent.putExtra(ScannerActivity.EXTRA_TORCH, torchOn);
         intent.putExtra(ScannerActivity.EXTRA_FRONT, frontCamera);
         intent.putExtra(ScannerActivity.EXTRA_PROMPT, prompt);
+        intent.putExtra(ScannerActivity.EXTRA_SCAN_LINE, showScanLine);
         cordova.setActivityResultCallback(this);
         activity.startActivityForResult(intent, REQ_SCAN);
     }

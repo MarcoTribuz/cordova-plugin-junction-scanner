@@ -24,18 +24,19 @@ import AudioToolbox
     func scan(command: CDVInvokedUrlCommand) {
         self.pendingCallbackId = command.callbackId
 
-        let formatsCsv  = (command.arguments.first as? String) ?? "QR_CODE,DATA_MATRIX"
-        let torchOn     = (command.arguments.count > 1 ? command.arguments[1] as? Bool : false) ?? false
-        let frontCamera = (command.arguments.count > 2 ? command.arguments[2] as? Bool : false) ?? false
-        let prompt      = (command.arguments.count > 3 ? command.arguments[3] as? String : "") ?? ""
+        let formatsCsv   = (command.arguments.first as? String) ?? "QR_CODE,DATA_MATRIX"
+        let torchOn      = (command.arguments.count > 1 ? command.arguments[1] as? Bool : false) ?? false
+        let frontCamera  = (command.arguments.count > 2 ? command.arguments[2] as? Bool : false) ?? false
+        let prompt       = (command.arguments.count > 3 ? command.arguments[3] as? String : "") ?? ""
+        let showScanLine = (command.arguments.count > 4 ? command.arguments[4] as? Bool : false) ?? false
 
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
-            self.present(formatsCsv, torchOn, frontCamera, prompt)
+            self.present(formatsCsv, torchOn, frontCamera, prompt, showScanLine)
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { granted in
                 DispatchQueue.main.async {
-                    granted ? self.present(formatsCsv, torchOn, frontCamera, prompt)
+                    granted ? self.present(formatsCsv, torchOn, frontCamera, prompt, showScanLine)
                             : self.sendError("camera_permission_denied")
                 }
             }
@@ -44,13 +45,14 @@ import AudioToolbox
         }
     }
 
-    private func present(_ formatsCsv: String, _ torchOn: Bool, _ frontCamera: Bool, _ prompt: String) {
+    private func present(_ formatsCsv: String, _ torchOn: Bool, _ frontCamera: Bool, _ prompt: String, _ showScanLine: Bool) {
         DispatchQueue.main.async {
             let vc = ScannerViewController()
-            vc.formatsCsv  = formatsCsv
-            vc.startTorch  = torchOn
-            vc.useFront    = frontCamera
-            vc.promptText  = prompt
+            vc.formatsCsv    = formatsCsv
+            vc.startTorch    = torchOn
+            vc.useFront      = frontCamera
+            vc.promptText    = prompt
+            vc.showScanLine  = showScanLine
             vc.onResult    = { [weak self] text, format in
                 self?.sendOk(text: text, format: format, cancelled: false)
             }
@@ -87,10 +89,11 @@ import AudioToolbox
 
 class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
 
-    var formatsCsv = "QR_CODE,DATA_MATRIX"
-    var startTorch = false
-    var useFront    = false
-    var promptText  = ""
+    var formatsCsv   = "QR_CODE,DATA_MATRIX"
+    var startTorch   = false
+    var useFront     = false
+    var promptText   = ""
+    var showScanLine = false
 
     var onResult: ((String, String) -> Void)?
     var onCancel: (() -> Void)?
@@ -103,7 +106,7 @@ class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDel
 
     // Brand palette
     private let navyBg   = UIColor(red: 10/255,  green: 15/255,  blue: 30/255,  alpha: 1)  // #0A0F1E
-    private let accent   = UIColor(red: 34/255,  green: 211/255, blue: 166/255, alpha: 1)  // #22D3A6
+    private let accent   = UIColor(red: 59/255,  green: 104/255, blue: 178/255, alpha: 1)  // #3B68B2
     private let glassReg = UIColor(white: 1, alpha: 0.10)
     private let glassBdr = UIColor(white: 1, alpha: 0.18)
 
@@ -187,7 +190,7 @@ class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDel
     // MARK: Overlay
 
     private func setupOverlay() {
-        // Glow layer sits behind the visible scan-line, wider and more diffuse.
+        guard showScanLine else { return }
         glowLine.opacity = 0.45
         glowLine.cornerRadius = 3
         view.layer.addSublayer(glowLine)
@@ -256,41 +259,13 @@ class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDel
         corners.lineCap = .round
         view.layer.insertSublayer(corners, above: cornersGlow)
 
-        // Corner dots — filled accent circles at each reticle corner.
-        addCornerDots(above: corners)
-
-        // Glow band (wider, behind scan-line).
-        glowLine.backgroundColor = accent.withAlphaComponent(0.3).cgColor
-        glowLine.frame = CGRect(x: reticleRect.minX + 4, y: reticleRect.minY + 8,
-                                width: reticleRect.width - 8, height: 12)
-
-        // Scan-line.
-        scanLine.frame = CGRect(x: reticleRect.minX + 6, y: reticleRect.minY + 8,
-                                width: reticleRect.width - 12, height: 4)
-
-        addScanAnimation()
-    }
-
-    private func addCornerDots(above layer: CALayer) {
-        let dotR: CGFloat = 5
-        let offsets: [(CGFloat, CGFloat)] = [
-            (reticleRect.minX, reticleRect.minY),
-            (reticleRect.maxX, reticleRect.minY),
-            (reticleRect.maxX, reticleRect.maxY),
-            (reticleRect.minX, reticleRect.maxY),
-        ]
-        for (cx, cy) in offsets {
-            let dot = CALayer()
-            dot.name = "jx-overlay"
-            dot.bounds = CGRect(x: 0, y: 0, width: dotR * 2, height: dotR * 2)
-            dot.position = CGPoint(x: cx, y: cy)
-            dot.cornerRadius = dotR
-            dot.backgroundColor = accent.cgColor
-            dot.shadowColor = accent.cgColor
-            dot.shadowOffset = .zero
-            dot.shadowRadius = 4
-            dot.shadowOpacity = 0.9
-            view.layer.insertSublayer(dot, above: layer)
+        if showScanLine {
+            glowLine.backgroundColor = accent.withAlphaComponent(0.3).cgColor
+            glowLine.frame = CGRect(x: reticleRect.minX + 4, y: reticleRect.minY + 8,
+                                    width: reticleRect.width - 8, height: 12)
+            scanLine.frame = CGRect(x: reticleRect.minX + 6, y: reticleRect.minY + 8,
+                                    width: reticleRect.width - 12, height: 4)
+            addScanAnimation()
         }
     }
 

@@ -10,6 +10,7 @@ var cordovaExec = require('cordova/exec');
  * @param {boolean}  [options.torchOn=false]      start with torch on.
  * @param {boolean}  [options.preferFrontCamera=false]
  * @param {string}   [options.prompt='']          hint text under the reticle.
+ * @param {boolean}  [options.showScanLine=false]  show animated scan-line inside reticle.
  * @param {Function} success Callback receiving { text, format, cancelled }.
  *                           On user cancel: { text:'', format:'', cancelled:true }.
  * @param {Function} error   Callback receiving an error string (no camera / permission denied).
@@ -20,7 +21,8 @@ exports.scan = function (options, success, error) {
     o.formats || 'QR_CODE,DATA_MATRIX,EAN_13,EAN_8,CODE_128,UPC_A,UPC_E,PDF_417,AZTEC',
     !!o.torchOn,
     !!o.preferFrontCamera,
-    o.prompt || ''
+    o.prompt || '',
+    !!o.showScanLine
   ]);
 };
 
